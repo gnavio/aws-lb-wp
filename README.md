@@ -157,6 +157,8 @@ Para ejecutar el *script*:
 <pre><code>python ./deploy.py</code></pre>
 
 Una vez ejecutado se confirma con *yes*. El código Terraform generará una *llave SSH* en la **carpeta keys** que servirá para acceder por medio de SSH a la instancia WordPress.
+
+También verás dos *outputs*, uno con la **IP de la Instancia** para acceder por medio de SSH y otro con el **DNS del balanceador** para acceder al servicio.
 > El usuario Linux de la instancia es *bitnami*.
 
 Para **destruir** la infraestructura hay otro *script* Python [destroy.py](https://github.com/gnavio/aws-lb-wp/blob/main/terraform/destroy.py). Se ejecuta con:
