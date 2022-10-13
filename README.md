@@ -33,7 +33,7 @@ Vamos a ver una vista más detallada de la infraestructura que se busca desarrol
 
 ![2-solucion](https://user-images.githubusercontent.com/100093310/195448431-8598a54f-4c13-48d0-b16c-64417ad1c155.png)
 
-Los clientes que conectan al **balanceador (LB)** a través de HTTP o HTTPS. Este balanceador de carga tiene asociado un **grupo de destino (LB-gd)** que se encarga de enviar el tráfico a la **instancia WordPress (WP)**.
+Los clientes se conectan al **balanceador (LB)** a través de HTTP o HTTPS. Este balanceador de carga tiene asociado un **grupo de destino (LB-gd)** que se encarga de enviar el tráfico a la **instancia WordPress (WP)**.
 
 Además, LB y WP tienen diferentes grupos de seguridad que filtran el tráfico que reciben. LB permite el tráfico HTTP y HTTPS del exterior y WP permite HTTP (y HTTPS) sólo si proviene del balanceador LB.
 
@@ -54,11 +54,12 @@ La configuración de los componentes de la infraestructura se detalla a continua
 
 Para facilitar el despliegue, en esta instancia he usado una AMI del AWS Marketplace. En concreto la imagen es "WordPress Certified by Bitnami and Automattic", es una imagen con base Debian con un WordPress ya configurado y actualizado a su ultima versión. Está respaldada por Bitnami, una empresa de VMware.
 
-> El usuario y contraseña para WordPress se encuentra en el *log* de la instancia. La información del usuario Linux está publicada en un [README](https://bitnami.com/stack/wordpress/README.txt) por Bitnami.
+> El usuario y contraseña para WordPress se encuentran en el *log* de la instancia. La información del usuario Linux está publicada en un [README](https://bitnami.com/stack/wordpress/README.txt) por Bitnami.
 
-Como alternativa se podría usar una imagen con base Linux e instalar WordPress manualmente por medio de SSH, en esta ocasión me decantaré por la primera opción.
+Como alternativa se podría usar una imagen con base Linux e instalar WordPress manualmente por medio de SSH o automatizado por medio de comandos en el despliegue, esta alternativa permite una mayor personalización de la instacia base así como de los servicios utilizados. En esta ocasión, para facilitar el despliegue y el desarrollo de la insfraestructura, me decantaré por la primera opción. Una vez creada la infraestructura se podría pasar al desarrollo de la instancia personalizada fácilmente cambiando la imagen de la instancia.
 
 ## ⚖️ Equilibrio de carga
+Los balanceadores de carga de encargan de distribuir el tráfico de forma equilibrada entre un grupo de instancias asociadas mediante un grupo de destino. En esta ocación solo tenemos una instancia, pero en caso de tener varias se distribuiría el tráfico de forma equilibrada entre ellas.
 ### **[LB] Balanceador de carga**
 
 | Parámetros | Valor |
@@ -79,10 +80,9 @@ Los **agentes de escucha** asociados a este balanceador son los siguientes:
 | HTTP : 80 | n/a | n/a | reenviando a **LB-gp**
 | HTTPS : 443 | ELBSecurityPolicy-2016-08 | Sí | reenviando a **LB-gp**
 
-> Para que el balanceador reciba tráfico HTTPS hay que configurar un certificado con el servicio AWS Certificate Manager.
+> Para que el balanceador reciba tráfico HTTPS hay que configurar un certificado SSL con el servicio AWS Certificate Manager.
 
-Como se puede observar estos **agentes de escucha** capturan el tráfico HTTP y HTTPS y lo reenvían al **grupo de destino LB-gp** que se detalla a continuación:
-
+Como se puede observar, estos **agentes de escucha** capturan el tráfico HTTP y HTTPS y lo reenvían al **grupo de destino LB-gp** que se detalla a continuación:
 
 ### **[LB-gp] Grupo de destino**
 
@@ -106,8 +106,7 @@ En este apartado se definen las reglas de tráfico tanto para el balanceador de 
 | **Salida** |  |  |  |  |  |  |
 |  | sgr-06496b4ea15dce0ff | IPv4 | Todo el tráfico | Todo | Todo | 0.0.0.0/0 |
 
-> Para este grupo de seguridad no es necesario habilitar el SSH ya que en AWS los balanceadores de carga de aplicación no son accesibles mediante este protocolo.
-
+> Para este grupo de seguridad no es necesario habilitar el protocolo SSH, ya que en AWS los balanceadores de carga de aplicación no son accesibles mediante este protocolo.
 
 ### **[WP-sg] (sg-06c861be8eb7f6425)**
 
@@ -129,47 +128,49 @@ En este apartado se definen las reglas de tráfico tanto para el balanceador de 
 
 Para finalizar, en este repositorio se puede encontrar toda esta infraestructura automatizada para que se pueda crear y destruir desde un solo comando.
 
-Para esto he utilizado Terraform, un software de infraestructura que permite la creación de infraestructura en los principales servicios de *cloud*.
+Para esto he utilizado Terraform, un software de infraestructura que permite la creación de esta en los principales servicios de *cloud*.
 
-Después documentarme sobre los fundamentos de Terraform, he ido consultado su [documentación para AWS](https://registry.terraform.io/providers/hashicorp/aws/latest/docs) y pasando cada componente de la infraestructura con su configuración correspondiente a código:
+Después de documentarme sobre los fundamentos de Terraform, he ido consultado su [documentación para AWS](https://registry.terraform.io/providers/hashicorp/aws/latest/docs) y pasando cada componente de la infraestructura con su configuración correspondiente a código.
 
-1. [Instancias](https://github.com/gnavio/aws-lb-wp/blob/main/terraform/main.tf)
+Para el despliegue a través de código se crean diferentes componentes:
 
-2. [Equilibrio de carga](https://github.com/gnavio/aws-lb-wp/blob/main/terraform/lb.tf)
+1. [VPC y Subnets dedicadas](https://github.com/gnavio/aws-lb-wp/blob/main/terraform/vpc.tf)
 
-3. [Grupos de seguridad](https://github.com/gnavio/aws-lb-wp/blob/main/terraform/sg.tf)
+2. [Instancia](https://github.com/gnavio/aws-lb-wp/blob/main/terraform/main.tf)
 
-Si quieres desplegar la infraestructura tendrás que configurar varios parámetros (están declarados como variables locales) de los ficheros de configuración.
+3. [Equilibrio de carga](https://github.com/gnavio/aws-lb-wp/blob/main/terraform/lb.tf)
 
-<pre><code>provider "aws" {
-  region = "us-east-1"    # Region
-  access_key = ""
-  secret_key = ""
-}</code></pre>
-> Claves para conectarse a la API de AWS.
+4. [Grupos de seguridad](https://github.com/gnavio/aws-lb-wp/blob/main/terraform/sg.tf)
 
-<pre><code>locals {
-  subnet_a                   = ""            #ID subnet A
-  subnet_b                   = ""            #ID subnet B
-  availability_instance_zone = "us-east-1a"  # Nombre zona de disponibilidad
-  instance_type              = "t2.micro"    # Tipo de instancia
-  vpc_id                     = ""            # ID de la VPC
-  ami                        = ""            # AMI de la instancia (WordPress de Bitnami por defecto)
-  
-  # Valores opcionales para listener HTTPS
-  # certificate_arn   = ""
-  # ssl_policy        = "ELBSecurityPolicy-2016-08"
-}</code></pre>
-> Para que el balanceador reciba tráfico HTTPS hay que descomentar el listener y añadir las variables locales para el certificado SSL.
+5. [Llave SSH de la instancia](https://github.com/gnavio/aws-lb-wp/blob/main/terraform/main.tf)
 
-Una vez configurado, la infraestructura se **crea** con:
+### Instrucciones para el despliegue
+
+Para desplegar la infraestructura he creado un *script* en Python [deploy.py](https://github.com/gnavio/aws-lb-wp/blob/main/terraform/deploy.py) que ejecuta los siguientes comandos de Terraform:
 <pre><code>terraform init</code></pre>
 <pre><code>terraform plan</code></pre>
-y se **despliega** con:
 <pre><code>terraform apply</code></pre>
-Para **destruir** la infraestructura:
-<pre><code>terraform destroy</code></pre>
+El primer comando **crea** el directorio de trabajo, el segundo genera el **plan de ejecución** y el último realiza el **despliege** de los componentes AWS.
+> La ejecución del *script* Python se debe hacer desde el directorio de trabajo que contenga los archivos .tf.
 
+Para ejecutar el *script*:
+<pre><code>python ./deploy.py</code></pre>
+
+Una vez ejecutado se confirma con *yes*. El código Terraform generará una *llave SSH* en la **carpeta keys** que servirá para acceder por medio de SSH a la instancia WordPress.
+> El usuario Linux de la instancia es *bitnami*.
+
+Para **destruir** la infraestructura hay otro *script* Python [destroy.py](https://github.com/gnavio/aws-lb-wp/blob/main/terraform/destroy.py). Se ejecuta con:
+<pre><code>python ./destroy.py</code></pre>
+> La destrucción de la infraestructura también borrará la llave SSH generada en AWS y en la carpeta keys.
+
+Este *script* contiene el comando:
+<pre><code>terraform destroy</code></pre>
+que nos permite destruir la infraestructura desplegada.
+
+Para que el balanceador reciba tráfico HTTPS hay que descomentar el listener HTTPS de [lb.tf](https://github.com/gnavio/aws-lb-wp/blob/main/terraform/lb.tf) y añadir el certificado SSL en las variables locales de [main.tf](https://github.com/gnavio/aws-lb-wp/blob/main/terraform/main.tf).
+<pre><code># Valores opcionales para listener HTTPS
+# certificate_arn   = ""
+# ssl_policy        = "ELBSecurityPolicy-2016-08"</code></pre>
 
 ## 📚 Recursos utilizados 
 Estos han sido los recursos en los que me he apoyado para la realización de este proyecto.
