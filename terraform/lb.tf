@@ -4,7 +4,7 @@ resource "aws_lb" "LB" {
   name               = "LB"
   load_balancer_type = "application"
   security_groups    = [aws_security_group.LB_sg.id]
-  subnets            = [local.subnet_a, local.subnet_b]
+  subnets            = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id]
 }
 
 # Agente de escucha HTTP
@@ -41,9 +41,9 @@ resource "aws_lb_target_group" "LB_tg" {
   port        = 80
   protocol    = "HTTP"
   target_type = "instance"
-  vpc_id      = local.vpc_id
+  vpc_id      = aws_vpc.vpc.id
 
-  depends_on = [aws_lb.LB]
+  depends_on  = [aws_lb.LB]
 }
 
 resource "aws_lb_target_group_attachment" "destino_tg" {

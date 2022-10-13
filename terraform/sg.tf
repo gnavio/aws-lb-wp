@@ -1,10 +1,10 @@
 # GRUPOS DE SEGURIDAD
 
-# Grupo de seguridad Balanceador de carga
+#Grupo de seguridad Load Balancer
 resource "aws_security_group" "LB_sg" {
   name        = "LB_sg"
   description = "SG-Balanceador"
-  vpc_id      = local.vpc_id
+  vpc_id      = aws_vpc.vpc.id
 
   ingress {
     from_port   = "80"
@@ -30,11 +30,11 @@ resource "aws_security_group" "LB_sg" {
   }
 }
 
-# Grupo de seguridad Instancia WordPress
+# Grupo de seguiridad Instancia WordPress
 resource "aws_security_group" "WP_sg" {
   name        = "WP-sg"
   description = "SG-WordPress"
-  vpc_id      = local.vpc_id
+  vpc_id      = aws_vpc.vpc.id
 
   ingress {
     from_port       = "80"
